@@ -4,6 +4,7 @@ using TacticalDroneCommander.Core;
 using TacticalDroneCommander.Infrastructure;
 using Entities;
 using Controllers;
+using UI;
 
 namespace Gameplay
 {
@@ -19,18 +20,24 @@ namespace Gameplay
         private readonly IEntitiesManager _entitiesManager;
         private readonly IPoolService _poolService;
         private readonly IAssetProvider _assetProvider;
+        private readonly IUpgradeSpawner _upgradeSpawner;
+        private readonly IHealthBarService _healthBarService;
         private int _enemyCounter;
         
         public EnemySpawner(
             GameConfig config, 
             IEntitiesManager entitiesManager,
             IPoolService poolService,
-            IAssetProvider assetProvider)
+            IAssetProvider assetProvider,
+            IUpgradeSpawner upgradeSpawner,
+            IHealthBarService healthBarService)
         {
             _config = config;
             _entitiesManager = entitiesManager;
             _poolService = poolService;
             _assetProvider = assetProvider;
+            _upgradeSpawner = upgradeSpawner;
+            _healthBarService = healthBarService;
             _enemyCounter = 0;
         }
         
@@ -49,7 +56,7 @@ namespace Gameplay
             
             EnemyController controller = enemyObject.GetComponent<EnemyController>();
             
-            controller.Initialize(enemy, _poolService, _entitiesManager);
+            controller.Initialize(enemy, _poolService, _entitiesManager, _config, _upgradeSpawner);
             
             Entity baseEntity = _entitiesManager.GetEntity("base");
             if (baseEntity != null)
@@ -58,6 +65,8 @@ namespace Gameplay
             }
             
             _entitiesManager.RegisterEntity(enemy);
+            
+            _ = _healthBarService.CreateHealthBarForEntity(enemy);
             
             Debug.Log($"EnemySpawner: Spawned {enemyId} at {spawnPosition}, target: {targetPosition}");
             

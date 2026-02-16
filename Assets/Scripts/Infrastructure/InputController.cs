@@ -27,7 +27,7 @@ namespace TacticalDroneCommander.Core
 
             _inputActions.Enable();
         }
-        
+
         private void OnEscape(InputAction.CallbackContext context)
         {
             OnEscapePressed?.Invoke();
@@ -53,39 +53,6 @@ namespace TacticalDroneCommander.Core
 
             _inputActions.Disable();
             _inputActions.Dispose();
-        }
-    }
-    public class InputSystem_Actions : IDisposable
-    {
-        public PlayerActions Player { get; }
-
-        public InputSystem_Actions()
-        {
-            Player = new PlayerActions();
-        }
-
-        public void Enable()
-        {
-            Player.Escape.Enable();
-            Player.Attack.Enable();
-        }
-
-        public void Disable()
-        {
-            Player.Escape.Disable();
-            Player.Attack.Disable();
-        }
-
-        public void Dispose()
-        {
-            Player.Escape.Dispose();
-            Player.Attack.Dispose();
-        }
-
-        public class PlayerActions
-        {
-            public InputAction Escape { get; } = new InputAction();
-            public InputAction Attack { get; } = new InputAction();
         }
     }
 }

@@ -2,6 +2,7 @@ using UI;
 using VContainer;
 using VContainer.Unity;
 using UnityEngine;
+using Gameplay;
 
 namespace TacticalDroneCommander.Core
 {
@@ -27,6 +28,7 @@ namespace TacticalDroneCommander.Core
             
             builder.RegisterComponentInHierarchy<GameBootstrapper>();
             builder.RegisterComponentInHierarchy<MainMenu>();
+            builder.RegisterComponentInHierarchy<PlayerInputHandler>();
             
             Debug.Log("VContainer: All dependencies configured!");
         }

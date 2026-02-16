@@ -12,7 +12,7 @@ namespace Entities
         private float _lastAttackTime;
 
         public EnemyEntity(string id, GameObject entityObject, GameConfig config) 
-            : base(id, config.EnemyDroneHP, config.EnemyDroneHP, config.EnemyRegenerationRate, entityObject)
+            : base(id, config.EnemyDroneHP, config.EnemyDroneHP, entityObject)
         {
             _attackCooldown = config.EnemyAttackCooldown;
             _attackRange = config.EnemyAttackRange;

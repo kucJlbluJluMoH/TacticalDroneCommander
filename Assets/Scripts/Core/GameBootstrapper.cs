@@ -12,6 +12,7 @@ namespace TacticalDroneCommander.Core
         [Inject] private IGameStateMachine _gameStateMachine;
         [Inject] private IPoolInitializer _poolInitializer;
         [Inject] private IBaseSpawner _baseSpawner;
+        [Inject] private IPlayerDroneManager _playerDroneManager;
         
         private async void Start()
         {
@@ -32,6 +33,9 @@ namespace TacticalDroneCommander.Core
             
             await _baseSpawner.SpawnBase();
             Debug.Log("GameBootstrapper: Base spawned");
+            
+            _playerDroneManager.SpawnInitialDrone();
+            Debug.Log("GameBootstrapper: Initial player drone spawned");
             
             _gameStateMachine.SwitchState(GameState.Pregame);
             
