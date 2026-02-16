@@ -75,7 +75,6 @@ namespace TacticalDroneCommander.Infrastructure
                     string json = File.ReadAllText(SavePath);
                     CurrentSave = JsonConvert.DeserializeObject<SaveData>(json);
                     Debug.Log($"SaveLoadService: Game loaded from {SavePath}");
-                    Debug.Log($"SaveLoadService: High Score = {CurrentSave.highScore}");
                 }
                 else
                 {

@@ -1,3 +1,4 @@
+using UI;
 using VContainer;
 using VContainer.Unity;
 using UnityEngine;
@@ -25,7 +26,7 @@ namespace TacticalDroneCommander.Core
             installer.Install(builder);
             
             builder.RegisterComponentInHierarchy<GameBootstrapper>();
-            builder.RegisterComponentInHierarchy<GameStateMachine>().AsImplementedInterfaces();
+            builder.RegisterComponentInHierarchy<MainMenu>();
             
             Debug.Log("VContainer: All dependencies configured!");
         }

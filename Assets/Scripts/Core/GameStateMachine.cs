@@ -1,4 +1,5 @@
 ﻿using System;
+using Gameplay;
 using UnityEngine;
 
 namespace TacticalDroneCommander.Core
@@ -20,12 +21,20 @@ namespace TacticalDroneCommander.Core
         void TogglePause();
     }
     
-    public class GameStateMachine : MonoBehaviour, IGameStateMachine
+    public class GameStateMachine : IGameStateMachine
     {
+        private WaveManager _waveManager;
+        public GameStateMachine(WaveManager waveManager)
+        {
+            _waveManager = waveManager;
+            CurrentState = GameState.Pregame;
+            Debug.Log("GameStateMachine: Initialized with state Pregame");
+        }
+        
         public GameState CurrentState { get; private set; }
         
         public event Action<GameState> OnStateChanged;
-
+        
         
         public void SwitchState(GameState newState)
         {
@@ -55,6 +64,7 @@ namespace TacticalDroneCommander.Core
                 case GameState.Wave:
                     Time.timeScale = 1f;
                     Debug.Log("GameStateMachine: Entering Wave state - enemies spawning!");
+                    _waveManager.StartWave(1);
                     break;
                 
                 case GameState.Pause:

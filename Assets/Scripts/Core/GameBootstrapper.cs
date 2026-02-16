@@ -2,14 +2,16 @@
 using UnityEngine;
 using VContainer;
 using TacticalDroneCommander.Infrastructure;
+using Gameplay;
 
 namespace TacticalDroneCommander.Core
 {
     public class GameBootstrapper : MonoBehaviour
     {
-        [Inject] private IAssetProvider _assetProvider;
         [Inject] private ISaveLoadService _saveLoadService;
         [Inject] private IGameStateMachine _gameStateMachine;
+        [Inject] private IPoolInitializer _poolInitializer;
+        [Inject] private IBaseSpawner _baseSpawner;
         
         private async void Start()
         {
@@ -25,6 +27,11 @@ namespace TacticalDroneCommander.Core
             
             await UniTask.Yield();
             Debug.Log("GameBootstrapper: Asset provider ready");
+
+            await _poolInitializer.InitializeAllPools();
+            
+            await _baseSpawner.SpawnBase();
+            Debug.Log("GameBootstrapper: Base spawned");
             
             _gameStateMachine.SwitchState(GameState.Pregame);
             

@@ -12,16 +12,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 03c55463107f4323b7a0639625f295b8, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  CoreStartingHealth: 100
-  TimeBetweenWaves: 5
-  WaveHealthMultiplier: 1.2
-  DroneSpeed: 5
-  DroneFireRate: 1
-  DroneDamage: 10
-  DroneDetectionRadius: 10
-  EnemySpeed: 2
-  EnemyHealth: 50
-  EnemyDamage: 10
-  ProjectilePoolSize: 50
-  EnemyPoolSize: 30
   SaveFileName: save.json
+  BaseEnemiesPerWave: 5
+  EnemiesCountMultiplier: 1.3
+  TimeBetweenWaves: 5
+  BaseCoordinates: {x: 0, y: 0, z: 0}
+  PlayerDroneSpeed: 5
+  EnemyDroneSpeed: 3
+  PlayerDroneHP: 100
+  EnemyDroneHP: 50
+  BaseHP: 200
+  PoolConfigs:
+  - Key: Enemy
+    PrefabPath: Prefabs/Enemy
+    InitialSize: 50
+  - Key: Bullet
+    PrefabPath: Prefabs/Bullet
+    InitialSize: 100
+  - Key: Drone
+    PrefabPath: Prefabs/PlayerDrone
+    InitialSize: 10
