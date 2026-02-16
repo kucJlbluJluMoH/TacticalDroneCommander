@@ -10,6 +10,7 @@ namespace TacticalDroneCommander.Core
     {
         [Inject] private ISaveLoadService _saveLoadService;
         [Inject] private IGameStateMachine _gameStateMachine;
+        [Inject] private IWaveManager _waveManager;
         [Inject] private IPoolInitializer _poolInitializer;
         [Inject] private IBaseSpawner _baseSpawner;
         [Inject] private IPlayerDroneManager _playerDroneManager;
@@ -22,6 +23,8 @@ namespace TacticalDroneCommander.Core
         private async UniTask InitializeGame()
         {
             Debug.Log("GameBootstrapper: Starting game initialization...");
+            
+            _waveManager.Initialize();
             
             _saveLoadService.Load();
             Debug.Log("GameBootstrapper: Save data loaded");

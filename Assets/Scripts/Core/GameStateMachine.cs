@@ -1,5 +1,4 @@
 ﻿using System;
-using Gameplay;
 using UnityEngine;
 
 namespace TacticalDroneCommander.Core
@@ -8,6 +7,7 @@ namespace TacticalDroneCommander.Core
     {
         Pregame,    // Before game starts (menu, setup)
         Wave,       // Active wave with enemies
+        Postwave,    // Between waves (upgrades)
         Pause,      // Game paused
         GameOver    // Game ended
     }
@@ -23,10 +23,8 @@ namespace TacticalDroneCommander.Core
     
     public class GameStateMachine : IGameStateMachine
     {
-        private WaveManager _waveManager;
-        public GameStateMachine(WaveManager waveManager)
+        public GameStateMachine()
         {
-            _waveManager = waveManager;
             CurrentState = GameState.Pregame;
             Debug.Log("GameStateMachine: Initialized with state Pregame");
         }
@@ -64,9 +62,11 @@ namespace TacticalDroneCommander.Core
                 case GameState.Wave:
                     Time.timeScale = 1f;
                     Debug.Log("GameStateMachine: Entering Wave state - enemies spawning!");
-                    _waveManager.StartWave(1);
                     break;
-                
+                case GameState.Postwave:
+                    Time.timeScale = 1f;
+                    Debug.Log("GameStateMachine: Entering post Wave state - player can pick up upgrade");
+                    break;
                 case GameState.Pause:
                     Time.timeScale = 0f;
                     Debug.Log("GameStateMachine: Entering Pause state");
@@ -89,6 +89,10 @@ namespace TacticalDroneCommander.Core
                     
                 case GameState.Wave:
                     Debug.Log("GameStateMachine: Exiting Wave state");
+                    break;
+                
+                case GameState.Postwave:
+                    Debug.Log("GameStateMachine: Exiting post Wave state");
                     break;
                 
                 case GameState.Pause:

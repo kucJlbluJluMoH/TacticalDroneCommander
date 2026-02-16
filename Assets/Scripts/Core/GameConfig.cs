@@ -15,7 +15,7 @@ namespace TacticalDroneCommander.Core
         [Tooltip("Multiplier for increasing enemy count each wave")]
         public float EnemiesCountMultiplier = 1.3f;
         [Tooltip("Time between waves in seconds")]
-        public float TimeBetweenWaves = 10f;
+        public float TimeBetweenWaves = 5f;
 
         [Header("═══════════════ BASE ═══════════════")]
         [Tooltip("Base coordinates")]

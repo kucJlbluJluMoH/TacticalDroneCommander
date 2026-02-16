@@ -13,6 +13,7 @@ namespace Gameplay
         IReadOnlyList<Entity> GetAllEntities();
         IEnumerable<T> GetEntitiesOfType<T>() where T : Entity;
         Entity GetEntity(String id);
+        event Action OnEntitiesChanged;
     }
     
     public class EntitiesManager : IEntitiesManager
@@ -34,8 +35,8 @@ namespace Gameplay
         {
             if (entity == null)
                 return;
-                
             _entities.Remove(entity);
+            OnEntitiesChanged?.Invoke();
         }
         
         public IReadOnlyList<Entity> GetAllEntities()
@@ -52,5 +53,6 @@ namespace Gameplay
         {
             return _entities.FirstOrDefault(e => e.GetId() == id);
         }
+        public event Action OnEntitiesChanged;
     }
 }

@@ -10,7 +10,7 @@ namespace Entities
         
         private float _lastDamageTime;
         private float _lastRegenerationTime;
-        
+        public EntityTag Tag { get; protected set; }
         public Entity(string id, int health, int maxHealth, GameObject entityObject)
         {
             _id = id;
@@ -78,5 +78,11 @@ namespace Entities
                 _health = Mathf.Min(_health + amount, _maxHealth);
             }
         }
+    }
+    public enum EntityTag
+    {
+        Base,
+        Player,
+        Enemy
     }
 }

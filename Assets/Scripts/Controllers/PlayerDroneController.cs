@@ -156,9 +156,12 @@ namespace Controllers
             {
                 _entitiesManager.UnregisterEntity(_playerEntity);
             }
-            
+            if (_poolService != null)
+            {
+                _poolService.Return("Drone", gameObject);
+            }
             _isInitialized = false;
-            gameObject.SetActive(false);
+            gameObject.SetActive(false);//todo
         }
         
 private void Attack(Entity target)
