@@ -2,6 +2,8 @@
 using Entities;
 using Gameplay;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
+using TacticalDroneCommander.Systems;
 
 namespace Controllers
 {
@@ -9,14 +11,27 @@ namespace Controllers
     {
         private BaseEntity _baseEntity;
         private IEntitiesManager _entitiesManager;
+        private IGameStateMachine _stateMachine;
         private GameConfig _config;
         private bool _isInitialized;
         
-        public void Initialize(BaseEntity baseEntity, IEntitiesManager entitiesManager, GameConfig config)
+        private IRegenerationSystem _regenerationSystem;
+        private IEventBus _eventBus;
+        
+        public void Initialize(
+            BaseEntity baseEntity,
+            IEntitiesManager entitiesManager,
+            IGameStateMachine stateMachine,
+            GameConfig config,
+            IRegenerationSystem regenerationSystem,
+            IEventBus eventBus)
         {
             _baseEntity = baseEntity;
             _entitiesManager = entitiesManager;
+            _stateMachine = stateMachine;
             _config = config;
+            _regenerationSystem = regenerationSystem;
+            _eventBus = eventBus;
             _isInitialized = true;
             
             Debug.Log($"BaseController: Base initialized at {transform.position}");
@@ -29,42 +44,33 @@ namespace Controllers
             
             if (_baseEntity.IsDead())
             {
-                OnBaseDeath();
+                HandleDeath();
                 return;
             }
             
-            ProcessRegeneration();
+            _regenerationSystem.ProcessRegeneration(
+                _baseEntity,
+                _config.BaseRegenerationAmount,
+                _config.BaseRegenerationDelay,
+                _config.BaseRegenerationRate);
         }
         
-        private void ProcessRegeneration()
+        private void HandleDeath()
         {
-            if (_baseEntity.GetHealth() >= _baseEntity.GetMaxHealth())
+            if (!_isInitialized)
                 return;
-            
-            float timeSinceLastDamage = Time.time - _baseEntity.GetLastDamageTime();
-            if (timeSinceLastDamage < _config.BaseRegenerationDelay)
-                return;
-            
-            float timeSinceLastRegen = Time.time - _baseEntity.GetLastRegenerationTime();
-            if (timeSinceLastRegen >= _config.BaseRegenerationRate)
-            {
-                _baseEntity.Regenerate(_config.BaseRegenerationAmount);
-                _baseEntity.SetLastRegenerationTime(Time.time);
-                Debug.Log($"BaseController: Base regenerated {_config.BaseRegenerationAmount} HP. Current HP: {_baseEntity.GetHealth()}/{_baseEntity.GetMaxHealth()}");
-            }
-        }
-        
-        private void OnBaseDeath()
-        {
+
             Debug.Log("BaseController: Base destroyed! Game Over!");
             
             if (_entitiesManager != null && _baseEntity != null)
             {
                 _entitiesManager.UnregisterEntity(_baseEntity);
             }
-            //todo
+            
+            _stateMachine?.SwitchState(GameState.GameOver);
             
             gameObject.SetActive(false);
+            _isInitialized = false;
         }
         
         private void OnDisable()

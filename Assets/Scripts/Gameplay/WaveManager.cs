@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using UnityEngine;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
 using Entities;
 
 namespace Gameplay
@@ -9,6 +10,7 @@ namespace Gameplay
     {
         void StartWave(int waveNumber = 0);
         void Initialize();
+        int CurrentWave { get; }
     }
     
     public class WaveManager: IWaveManager
@@ -16,30 +18,43 @@ namespace Gameplay
         private readonly GameConfig _config;
         private readonly IEntitiesManager _entitiesManager;
         private readonly IEnemySpawner _enemySpawner;
-        private readonly IGameStateMachine _stateMachine;
+        private readonly IEventBus _eventBus;
         private int _currentWave;
+        private GameState _currentGameState;
+        
+        public int CurrentWave => _currentWave;
         
         public WaveManager(
             GameConfig config, 
             IEntitiesManager entitiesManager,
-            IEnemySpawner enemySpawner,IGameStateMachine stateMachine)
+            IEnemySpawner enemySpawner,
+            IEventBus eventBus)
         {
             _config = config;
             _entitiesManager = entitiesManager;
             _enemySpawner = enemySpawner;
-            _stateMachine = stateMachine;
+            _eventBus = eventBus;
         }
         
         public void Initialize()
         {
             _entitiesManager.OnEntitiesChanged += CheckWaveCompletion;
-            _stateMachine.OnStateChanged += OnGameStateChanged;
-            Debug.Log("WaveManager initialized and subscribed to state changes.");
+            
+            _eventBus.Subscribe<EntityDiedEvent>(OnEntityDied);
+            _eventBus.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+            
+            Debug.Log("WaveManager initialized and subscribed to events.");
         }
 
-        private void OnGameStateChanged(GameState newState)
+        private void OnEntityDied(EntityDiedEvent evt)
         {
-            if (newState == GameState.Wave)
+        }
+
+        private void OnGameStateChanged(GameStateChangedEvent evt)
+        {
+            _currentGameState = evt.NewState;
+            
+            if (evt.NewState == GameState.Wave)
             {
                 StartWave();
             }
@@ -60,10 +75,13 @@ namespace Gameplay
             Debug.Log($"WaveManager: Starting wave {_currentWave} with {enemyCount} enemies");
             
             _enemySpawner.SpawnEnemies(enemyCount, targetPosition);
+            
+            _eventBus.Publish(new WaveStartedEvent(_currentWave, enemyCount));
         }
+        
         private void CheckWaveCompletion()
         {
-            if (_stateMachine.CurrentState != GameState.Wave)
+            if (_currentGameState != GameState.Wave)
             {
                 return;
             }
@@ -74,17 +92,11 @@ namespace Gameplay
             }
         }
 
-        private async void OnWaveCompleted()
+        private void OnWaveCompleted()
         {
             Debug.Log($"WaveManager: Wave {_currentWave} completed!");
-            _stateMachine.SwitchState(GameState.Postwave);
-
-            await System.Threading.Tasks.Task.Delay((int)(_config.TimeBetweenWaves*1000));
-
-            if (_stateMachine.CurrentState == GameState.Postwave)
-            {
-                StartWave();
-            }
+            
+            _eventBus.Publish(new WaveCompletedEvent(_currentWave));
         }
         
         private int CalculateEnemyCount()

@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
+using TacticalDroneCommander.Core.States;
+using TacticalDroneCommander.Core.Events;
 
 namespace TacticalDroneCommander.Core
 {
@@ -19,20 +23,42 @@ namespace TacticalDroneCommander.Core
         void SwitchState(GameState newState);
         bool IsInState(GameState state);
         void TogglePause();
+        void Update();
+        void Dispose();
     }
     
-    public class GameStateMachine : IGameStateMachine
+    public class GameStateMachine : IGameStateMachine, IDisposable
     {
-        public GameStateMachine()
+        private readonly Dictionary<GameState, IGameState> _states;
+        private readonly IEventBus _eventBus;
+        private IGameState _currentStateHandler;
+        private GameState _stateBeforePause;
+        private CancellationTokenSource _stateCancellationTokenSource;
+        
+        public GameStateMachine(IEventBus eventBus, GameConfig config)
         {
+            _eventBus = eventBus;
+            _stateCancellationTokenSource = new CancellationTokenSource();
+            
+            _states = new Dictionary<GameState, IGameState>
+            {
+                { GameState.Pregame, new PregameState() },
+                { GameState.Wave, new WaveState() },
+                { GameState.Postwave, new PostwaveState(config, this) },
+                { GameState.GameOver, new GameOverState() }
+            };
+            
             CurrentState = GameState.Pregame;
-            Debug.Log("GameStateMachine: Initialized with state Pregame");
+            _currentStateHandler = _states[CurrentState];
+            
+            _eventBus.Subscribe<WaveCompletedEvent>(OnWaveCompleted);
+            
+            Debug.Log("GameStateMachine: Initialized with State Pattern");
         }
         
         public GameState CurrentState { get; private set; }
         
         public event Action<GameState> OnStateChanged;
-        
         
         public void SwitchState(GameState newState)
         {
@@ -42,68 +68,39 @@ namespace TacticalDroneCommander.Core
                 return;
             }
 
-            ExitState(CurrentState);
-            CurrentState = newState;
-            EnterState(CurrentState);
+            if (!_currentStateHandler.CanTransitionTo(newState))
+            {
+                Debug.LogError($"GameStateMachine: Invalid transition from {CurrentState} to {newState}");
+                return;
+            }
+
+            var previousState = CurrentState;
             
+            _currentStateHandler.Exit();
+            
+            _stateCancellationTokenSource?.Cancel();
+            _stateCancellationTokenSource?.Dispose();
+            _stateCancellationTokenSource = new CancellationTokenSource();
+            
+            CurrentState = newState;
+            _currentStateHandler = _states[newState];
+            _currentStateHandler.Enter(_stateCancellationTokenSource.Token);
+            
+            _eventBus.Publish(new GameStateChangedEvent(previousState, newState));
             OnStateChanged?.Invoke(CurrentState);
-            Debug.Log($"GameStateMachine: Switched to state {CurrentState}");
+            
+            Debug.Log($"GameStateMachine: Transitioned from {previousState} to {CurrentState}");
         }
 
-        private void EnterState(GameState state)
+        public void Update()
         {
-            switch (state)
-            {
-                case GameState.Pregame:
-                    Time.timeScale = 1f;
-                    Debug.Log("GameStateMachine: Entering Pregame state");
-                    break;
-                    
-                case GameState.Wave:
-                    Time.timeScale = 1f;
-                    Debug.Log("GameStateMachine: Entering Wave state - enemies spawning!");
-                    break;
-                case GameState.Postwave:
-                    Time.timeScale = 1f;
-                    Debug.Log("GameStateMachine: Entering post Wave state - player can pick up upgrade");
-                    break;
-                case GameState.Pause:
-                    Time.timeScale = 0f;
-                    Debug.Log("GameStateMachine: Entering Pause state");
-                    break;
-                    
-                case GameState.GameOver:
-                    Time.timeScale = 0f;
-                    Debug.Log("GameStateMachine: Entering GameOver state");
-                    break;
-            }
+            _currentStateHandler?.Update();
         }
 
-        private void ExitState(GameState state)
+        private void OnWaveCompleted(WaveCompletedEvent evt)
         {
-            switch (state)
-            {
-                case GameState.Pregame:
-                    Debug.Log("GameStateMachine: Exiting Pregame state");
-                    break;
-                    
-                case GameState.Wave:
-                    Debug.Log("GameStateMachine: Exiting Wave state");
-                    break;
-                
-                case GameState.Postwave:
-                    Debug.Log("GameStateMachine: Exiting post Wave state");
-                    break;
-                
-                case GameState.Pause:
-                    Time.timeScale = 1f;
-                    Debug.Log("GameStateMachine: Exiting Pause state");
-                    break;
-                    
-                case GameState.GameOver:
-                    Debug.Log("GameStateMachine: Exiting GameOver state");
-                    break;
-            }
+            Debug.Log($"GameStateMachine: Wave {evt.WaveNumber} completed, transitioning to Postwave");
+            SwitchState(GameState.Postwave);
         }
 
         public bool IsInState(GameState state)
@@ -115,13 +112,27 @@ namespace TacticalDroneCommander.Core
         {
             if (CurrentState == GameState.Pause)
             {
-                SwitchState(GameState.Wave);
+                if (_stateBeforePause != GameState.Pause)
+                {
+                    SwitchState(_stateBeforePause);
+                }
             }
-            else if (CurrentState == GameState.Wave)
+            else
             {
-                SwitchState(GameState.Pause);
+                _stateBeforePause = CurrentState;
+                Time.timeScale = 0f;
+                CurrentState = GameState.Pause;
+                Debug.Log("GameStateMachine: Paused");
+                OnStateChanged?.Invoke(CurrentState);
             }
+        }
+
+        public void Dispose()
+        {
+            _stateCancellationTokenSource?.Cancel();
+            _stateCancellationTokenSource?.Dispose();
+            _currentStateHandler?.Exit();
+            Debug.Log("GameStateMachine: Disposed");
         }
     }
 }
-

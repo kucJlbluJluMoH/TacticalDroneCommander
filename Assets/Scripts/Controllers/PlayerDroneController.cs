@@ -3,8 +3,11 @@ using DG.Tweening;
 using Entities;
 using TacticalDroneCommander.Infrastructure;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
+using TacticalDroneCommander.Systems;
 using Gameplay;
 using Cysharp.Threading.Tasks;
+using System.Threading;
 
 namespace Controllers
 {
@@ -15,16 +18,19 @@ namespace Controllers
         [SerializeField] private GameObject _selectionIndicator;
         
         private PlayerEntity _playerEntity;
-        private ITargetFinder _targetFinder;
         private IPoolService _poolService;
         private IEntitiesManager _entitiesManager;
         private GameConfig _config;
         
+        private ICombatSystem _combatSystem;
+        private IRegenerationSystem _regenerationSystem;
+        private ITargetingSystem _targetingSystem;
+        private IEventBus _eventBus;
+        
         private bool _isInitialized;
         private bool _isSelected;
         private Tween _moveTween;
-        private Vector3 _targetPosition;
-        private bool _isMoving;
+        private CancellationTokenSource _cancellationTokenSource;
         
         private void Awake()
         {
@@ -32,25 +38,32 @@ namespace Controllers
             {
                 _selectionIndicator.SetActive(false);
             }
+            
+            _cancellationTokenSource = new CancellationTokenSource();
         }
         
         public void Initialize(
-            PlayerEntity playerEntity, 
-            ITargetFinder targetFinder, 
+            PlayerEntity playerEntity,
             IPoolService poolService,
             IEntitiesManager entitiesManager,
-            GameConfig config)
+            GameConfig config,
+            ICombatSystem combatSystem,
+            IRegenerationSystem regenerationSystem,
+            ITargetingSystem targetingSystem,
+            IEventBus eventBus)
         {
             _playerEntity = playerEntity;
-            _targetFinder = targetFinder;
             _poolService = poolService;
             _entitiesManager = entitiesManager;
             _config = config;
+            _combatSystem = combatSystem;
+            _regenerationSystem = regenerationSystem;
+            _targetingSystem = targetingSystem;
+            _eventBus = eventBus;
             
-            _targetPosition = transform.position;
             _isInitialized = true;
             
-            AutoAttackLoop().Forget();
+            AutoAttackLoop(_cancellationTokenSource.Token).Forget();
         }
         
         public void SetSelected(bool selected)
@@ -62,26 +75,24 @@ namespace Controllers
             }
         }
         
-        public bool IsSelected()
-        {
-            return _isSelected;
-        }
+        public bool IsSelected() => _isSelected;
         
         public void MoveToPosition(Vector3 targetPosition)
         {
-            _targetPosition = new Vector3(targetPosition.x, _config.PlayerHoverHeight, targetPosition.z);
+            if (_playerEntity == null || _playerEntity.IsDead())
+                return;
+
+            Vector3 adjustedPosition = new Vector3(targetPosition.x, _config.PlayerHoverHeight, targetPosition.z);
 
             _moveTween?.Kill();
 
-            float distance = Vector3.Distance(transform.position, _targetPosition);
+            float distance = Vector3.Distance(transform.position, adjustedPosition);
             float duration = distance / _playerEntity.GetMoveSpeed();
 
-            _isMoving = true;
-            _moveTween = transform.DOMove(_targetPosition, duration)
-                .SetEase(Ease.InOutQuad)
-                .OnComplete(() => _isMoving = false);
+            _moveTween = transform.DOMove(adjustedPosition, duration)
+                .SetEase(Ease.InOutQuad);
 
-            Vector3 direction = (_targetPosition - transform.position).normalized;
+            Vector3 direction = (adjustedPosition - transform.position).normalized;
             if (direction != Vector3.zero)
             {
                 direction.y = 0;
@@ -91,21 +102,23 @@ namespace Controllers
                 transform.DORotateQuaternion(lookRotation, 0.3f);
             }
         }
-
         
-        private async UniTaskVoid AutoAttackLoop()
+        private async UniTaskVoid AutoAttackLoop(CancellationToken cancellationToken)
         {
             while (_isInitialized && _playerEntity != null && !_playerEntity.IsDead())
             {
-                await UniTask.Yield();
+                if (cancellationToken.IsCancellationRequested)
+                    break;
+
+                await UniTask.Yield(cancellationToken);
                 
                 if (_playerEntity.CanAttack())
                 {
-                    Entity target = _targetFinder.FindClosestEnemy(transform.position, _playerEntity.GetAttackRange());
+                    Entity target = _targetingSystem.FindNearestEnemyForPlayer(_playerEntity, _entitiesManager);
                     
-                    if (target != null)
+                    if (target != null && _combatSystem.IsInRange(_playerEntity, target))
                     {
-                        Attack(target);
+                        PerformAttack(target);
                         _playerEntity.RegisterAttack();
                     }
                 }
@@ -113,7 +126,7 @@ namespace Controllers
             
             if (_playerEntity != null && _playerEntity.IsDead())
             {
-                OnDroneDeath();
+                HandleDeath();
             }
         }
         
@@ -124,78 +137,74 @@ namespace Controllers
             
             if (_playerEntity.IsDead())
             {
-                OnDroneDeath();
+                HandleDeath();
                 return;
             }
             
-            ProcessRegeneration();
+            _regenerationSystem.ProcessRegeneration(
+                _playerEntity,
+                _config.PlayerRegenerationAmount,
+                _config.PlayerRegenerationDelay,
+                _config.PlayerRegenerationRate);
         }
         
-        private void ProcessRegeneration()
+        private void HandleDeath()
         {
-            if (_playerEntity.GetHealth() >= _playerEntity.GetMaxHealth())
+            if (!_isInitialized)
                 return;
+
+            Debug.Log($"PlayerDroneController: Drone {_playerEntity.GetId()} destroyed!");
             
-            float timeSinceLastDamage = Time.time - _playerEntity.GetLastDamageTime();
-            if (timeSinceLastDamage < _config.PlayerRegenerationDelay)
-                return;
-            
-            float timeSinceLastRegen = Time.time - _playerEntity.GetLastRegenerationTime();
-            if (timeSinceLastRegen >= _config.PlayerRegenerationRate)
-            {
-                _playerEntity.Regenerate(_config.PlayerRegenerationAmount);
-                _playerEntity.SetLastRegenerationTime(Time.time);
-            }
-        }
-        
-        private void OnDroneDeath()
-        {
-            Debug.Log($"Player drone {_playerEntity.GetId()} destroyed!");
+            _cancellationTokenSource?.Cancel();
             
             if (_entitiesManager != null && _playerEntity != null)
             {
                 _entitiesManager.UnregisterEntity(_playerEntity);
             }
+            
             if (_poolService != null)
             {
                 _poolService.Return("Drone", gameObject);
             }
+            
             _isInitialized = false;
-            gameObject.SetActive(false);//todo
+            gameObject.SetActive(false);
         }
         
-private void Attack(Entity target)
-       {
-           Vector3 direction = (target.GetTransform().position - transform.position).normalized;
-           if (direction != Vector3.zero)
-           {
-               direction.y = 0;
-               direction.Normalize();
-               
-               Quaternion lookRotation = Quaternion.LookRotation(direction);
-               transform.rotation = lookRotation;
-           }
-       
-           Vector3 spawnPosition = _firePoint != null ? _firePoint.position : transform.position + transform.forward;
-           GameObject bullet = _poolService.Get("Bullet", spawnPosition, Quaternion.identity);
-       
-           if (bullet != null)
-           {
-               BulletController bulletController = bullet.GetComponent<BulletController>();
-               if (bulletController != null)
-               {
-                   bulletController.Initialize(target, _playerEntity.GetAttackDamage(), _poolService);
-               }
-           }
-       
-           Debug.Log($"Player attacking {target.GetId()} for {_playerEntity.GetAttackDamage()} damage!");
-       }
-       
+        private void PerformAttack(Entity target)
+        {
+            Vector3 direction = (target.GetTransform().position - transform.position).normalized;
+            if (direction != Vector3.zero)
+            {
+                direction.y = 0;
+                direction.Normalize();
+                
+                Quaternion lookRotation = Quaternion.LookRotation(direction);
+                transform.rotation = lookRotation;
+            }
+        
+            Vector3 spawnPosition = _firePoint != null ? _firePoint.position : transform.position + transform.forward;
+            GameObject bullet = _poolService.Get("Bullet", spawnPosition, Quaternion.identity);
+        
+            if (bullet != null)
+            {
+                BulletController bulletController = bullet.GetComponent<BulletController>();
+                if (bulletController != null)
+                {
+                    bulletController.Initialize(target, _playerEntity.GetAttackDamage(), _poolService);
+                }
+            }
+            
+            _combatSystem.ProcessAttack(_playerEntity, target, transform.position);
+        }
         
         public void ApplyUpgrade(UpgradeType upgradeType, float value)
         {
             _playerEntity.ApplyUpgrade(upgradeType, value);
-            Debug.Log($"Player received upgrade: {upgradeType} x{value}");
+            
+            _eventBus.Publish(new UpgradeCollectedEvent(_playerEntity, upgradeType.ToString(), value));
+            
+            Debug.Log($"PlayerDroneController: Upgrade applied - {upgradeType} x{value}");
         }
         
         private void OnDisable()
@@ -206,8 +215,9 @@ private void Attack(Entity target)
         private void OnDestroy()
         {
             _moveTween?.Kill();
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
         }
     }
 }
-
 

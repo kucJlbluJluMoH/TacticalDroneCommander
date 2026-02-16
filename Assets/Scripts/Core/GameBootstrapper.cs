@@ -45,8 +45,14 @@ namespace TacticalDroneCommander.Core
             Debug.Log("GameBootstrapper: Game initialization complete!");
         }
 
+        private void Update()
+        {
+            _gameStateMachine?.Update();
+        }
+
         private void OnApplicationQuit()
         {
+            _gameStateMachine?.Dispose();
             _saveLoadService.Save();
             Debug.Log("GameBootstrapper: Game saved on exit");
         }

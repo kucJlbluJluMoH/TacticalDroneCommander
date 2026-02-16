@@ -2,9 +2,12 @@
 using UnityEngine.AI;
 using Entities;
 using TacticalDroneCommander.Infrastructure;
-using Gameplay;
 using TacticalDroneCommander.Core;
-using VContainer;
+using TacticalDroneCommander.Core.Events;
+using TacticalDroneCommander.Systems;
+using Gameplay;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 
 namespace Controllers
 {
@@ -13,296 +16,112 @@ namespace Controllers
     {
         private NavMeshAgent _navMeshAgent;
         private EnemyEntity _enemyEntity;
-        private Vector3 _targetPosition;
-        private Entity _targetEntity;
-        private Entity _currentAttackTarget;
         private Entity _huntingTarget;
-        private bool _isHuntingBase;
         private bool _isInitialized;
+        
         private IPoolService _poolService;
         private IEntitiesManager _entitiesManager;
         private IUpgradeSpawner _upgradeSpawner;
         private GameConfig _config;
         
+        private ICombatSystem _combatSystem;
+        private IMovementSystem _movementSystem;
+        private ITargetingSystem _targetingSystem;
+        private IEventBus _eventBus;
+        
+        private CancellationTokenSource _cancellationTokenSource;
+        
         private void Awake()
         {
             _navMeshAgent = GetComponent<NavMeshAgent>();
+            _cancellationTokenSource = new CancellationTokenSource();
         }
         
-        public void Initialize(EnemyEntity enemyEntity, IPoolService poolService, IEntitiesManager entitiesManager, GameConfig config, IUpgradeSpawner upgradeSpawner = null)
+        public void Initialize(
+            EnemyEntity enemyEntity,
+            IPoolService poolService,
+            IEntitiesManager entitiesManager,
+            GameConfig config,
+            ICombatSystem combatSystem,
+            IMovementSystem movementSystem,
+            ITargetingSystem targetingSystem,
+            IEventBus eventBus,
+            IUpgradeSpawner upgradeSpawner = null)
         {
             _enemyEntity = enemyEntity;
             _poolService = poolService;
             _entitiesManager = entitiesManager;
-            _upgradeSpawner = upgradeSpawner;
             _config = config;
+            _combatSystem = combatSystem;
+            _movementSystem = movementSystem;
+            _targetingSystem = targetingSystem;
+            _eventBus = eventBus;
+            _upgradeSpawner = upgradeSpawner;
             
-            SelectHuntingTarget();
+            _huntingTarget = _targetingSystem.SelectTargetForEnemy(_enemyEntity, _entitiesManager, _config.EnemyBaseTargetProbability);
             
-            if (_navMeshAgent != null)
+            if (_navMeshAgent != null && _huntingTarget != null)
             {
-                _navMeshAgent.speed = enemyEntity.GetMoveSpeed();
-                _navMeshAgent.stoppingDistance = enemyEntity.GetAttackRange();
-                
-                if (_huntingTarget != null)
-                {
-                    UpdateNavigationToHuntingTarget();
-                }
-                else if (_targetEntity != null)
-                {
-                    _navMeshAgent.SetDestination(_targetPosition);
-                }
+                _movementSystem.MoveWithNavMesh(_navMeshAgent, _enemyEntity, _huntingTarget.GetTransform().position);
             }
             
             _isInitialized = true;
+            
+            EnemyAILoop(_cancellationTokenSource.Token).Forget();
         }
         
-        private void SelectHuntingTarget()
+        private async UniTaskVoid EnemyAILoop(CancellationToken cancellationToken)
         {
-            if (_entitiesManager == null)
-                return;
-            
-            Entity baseEntity = _entitiesManager.GetEntity("base");
-            
-            var baseProbability = _config.EnemyBaseTargetProbability;
-            
-            float roll = Random.Range(0f, 1f);
-            
-            if (roll < baseProbability)
+            while (_isInitialized && _enemyEntity != null && !_enemyEntity.IsDead())
             {
-                _isHuntingBase = true;
-                _huntingTarget = baseEntity;
-                Debug.Log($"Enemy {_enemyEntity.GetId()} will hunt the BASE (rolled {roll:F2} < {baseProbability:F2})");
-            }
-            else
-            {
-                _isHuntingBase = false;
-                _huntingTarget = SelectRandomPlayerDrone();
-                
-                if (_huntingTarget != null)
-                {
-                    Debug.Log($"Enemy {_enemyEntity.GetId()} will hunt DRONE {_huntingTarget.GetId()} (rolled {roll:F2} >= {baseProbability:F2})");
-                }
-                else
-                {
-                    _isHuntingBase = true;
-                    _huntingTarget = baseEntity;
-                    Debug.Log($"Enemy {_enemyEntity.GetId()} will hunt the BASE (no drones available)");
-                }
-            }
-        }
-        
-        private Entity SelectRandomPlayerDrone()
-        {
-            if (_entitiesManager == null)
-                return null;
-            
-            var allEntities = _entitiesManager.GetAllEntities();
-            var playerDrones = new System.Collections.Generic.List<Entity>();
-            
-            foreach (var entity in allEntities)
-            {
-                if (entity is PlayerEntity && !entity.IsDead())
-                {
-                    playerDrones.Add(entity);
-                }
-            }
-            
-            if (playerDrones.Count == 0)
-                return null;
-            
-            int randomIndex = Random.Range(0, playerDrones.Count);
-            return playerDrones[randomIndex];
-        }
-        
-        private void UpdateNavigationToHuntingTarget()
-        {
-            if (_huntingTarget == null || _huntingTarget.IsDead() || _navMeshAgent == null)
-                return;
-            
-            Vector3 targetPos = _huntingTarget.GetTransform().position;
-            
-            targetPos.y = transform.position.y;
-            
-            _targetPosition = targetPos;
-            
-            if (_navMeshAgent.isActiveAndEnabled)
-            {
-                _navMeshAgent.SetDestination(_targetPosition);
-            }
-        }
+                if (cancellationToken.IsCancellationRequested)
+                    break;
 
-        private void SetTarget(Vector3 targetPosition)
-        {
-            _targetPosition = targetPosition;
-            if (_navMeshAgent != null && _navMeshAgent.isActiveAndEnabled)
-            {
-                _navMeshAgent.SetDestination(_targetPosition);
-            }
-        }
-        
-        public void SetTargetEntity(Entity targetEntity)
-        {
-            _targetEntity = targetEntity;
-            SetTarget(targetEntity.GetTransform().position);
-        }
-        
-        private void Update()
-        {
-            if (!_isInitialized || _enemyEntity == null || _enemyEntity.IsDead())
-            {
-                if (_enemyEntity != null && _enemyEntity.IsDead())
-                {
-                    OnEnemyDeath();
-                }
-                return;
-            }
-            
-            if (_huntingTarget != null && _huntingTarget.IsDead())
-            {
-                if (!_isHuntingBase)
-                {
-                    _huntingTarget = SelectRandomPlayerDrone();
-                    if (_huntingTarget == null)
-                    {
-                        _isHuntingBase = true;
-                        _huntingTarget = _entitiesManager.GetEntity("base");
-                        Debug.Log($"Enemy {_enemyEntity.GetId()} switching to hunt BASE (no drones left)");
-                    }
-                    else
-                    {
-                        Debug.Log($"Enemy {_enemyEntity.GetId()} switching to hunt DRONE {_huntingTarget.GetId()}");
-                    }
-                }
-            }
-            
-            if (_huntingTarget != null && !_huntingTarget.IsDead())
-            {
-                UpdateNavigationToHuntingTarget();
-            }
-            
-            if (_navMeshAgent.isActiveAndEnabled && (_navMeshAgent.isStopped || !_navMeshAgent.hasPath))
-            {
-                _navMeshAgent.isStopped = false;
-                if (_huntingTarget != null)
-                {
-                    UpdateNavigationToHuntingTarget();
-                }
-                else
-                {
-                    _navMeshAgent.SetDestination(_targetPosition);
-                }
-            }
-            
-            DetermineAttackTarget();
-            
-            if (_currentAttackTarget != null)
-            {
-                float distanceToAttackTarget = CalculateDistanceIgnoringHeight(_currentAttackTarget.GetTransform().position);
+                await UniTask.Yield(cancellationToken);
                 
-                if (distanceToAttackTarget <= _enemyEntity.GetAttackRange())
+                if (_huntingTarget == null || _huntingTarget.IsDead())
                 {
-                    TryAttack();
+                    _huntingTarget = _targetingSystem.SelectTargetForEnemy(_enemyEntity, _entitiesManager, _config.EnemyBaseTargetProbability);
                 }
-            }
-        }
-        
-        private float CalculateDistanceIgnoringHeight(Vector3 targetPosition)
-        {
-            Vector3 myPos = transform.position;
-            myPos.y = 0;
-            targetPosition.y = 0;
-            return Vector3.Distance(myPos, targetPosition);
-        }
-        
-        private void DetermineAttackTarget()
-        {
-            if (_huntingTarget != null && !_huntingTarget.IsDead())
-            {
-                float distanceToHuntingTarget = CalculateDistanceIgnoringHeight(_huntingTarget.GetTransform().position);
-                if (distanceToHuntingTarget <= _enemyEntity.GetAttackRange())
+                
+                if (_huntingTarget != null && !_huntingTarget.IsDead())
                 {
-                    _currentAttackTarget = _huntingTarget;
-                    return;
+                    _movementSystem.MoveWithNavMesh(_navMeshAgent, _enemyEntity, _huntingTarget.GetTransform().position);
                 }
-            }
-            
-            if (_targetEntity != null && !_targetEntity.IsDead())
-            {
-                float distanceToCore = CalculateDistanceIgnoringHeight(_targetEntity.GetTransform().position);
-                if (distanceToCore <= _enemyEntity.GetAttackRange())
+                
+                if (_huntingTarget != null && _combatSystem.IsInRange(_enemyEntity, _huntingTarget))
                 {
-                    _currentAttackTarget = _targetEntity;
-                    return;
-                }
-            }
-            
-            Entity closestPlayerDrone = FindClosestPlayerDroneInRange();
-            if (closestPlayerDrone != null)
-            {
-                _currentAttackTarget = closestPlayerDrone;
-                return;
-            }
-            
-            _currentAttackTarget = null;
-        }
-        
-        private Entity FindClosestPlayerDroneInRange()
-        {
-            if (_entitiesManager == null)
-                return null;
-            
-            var allEntities = _entitiesManager.GetAllEntities();
-            Entity closestDrone = null;
-            float closestDistance = float.MaxValue;
-            
-            foreach (var entity in allEntities)
-            {
-                if (entity is PlayerEntity && !entity.IsDead())
-                {
-                    float distance = CalculateDistanceIgnoringHeight(entity.GetTransform().position);
-                    if (distance <= _enemyEntity.GetAttackRange() && distance < closestDistance)
+                    if (_enemyEntity.CanAttack())
                     {
-                        closestDistance = distance;
-                        closestDrone = entity;
+                        _combatSystem.ProcessAttack(_enemyEntity, _huntingTarget, transform.position);
+                        _enemyEntity.RegisterAttack();
                     }
                 }
+                
+                await UniTask.Delay(100, cancellationToken: cancellationToken);
             }
             
-            return closestDrone;
+            if (_enemyEntity != null && _enemyEntity.IsDead())
+            {
+                HandleDeath();
+            }
         }
         
-        private void TryAttack()
+        private void HandleDeath()
         {
-            if (!_enemyEntity.CanAttack())
+            if (!_isInitialized)
                 return;
 
-            if (_currentAttackTarget == null || _currentAttackTarget.IsDead())
-                return;
-                
-            float distanceToTarget = CalculateDistanceIgnoringHeight(_currentAttackTarget.GetTransform().position);
-            if (!(distanceToTarget <= _enemyEntity.GetAttackRange()))
-                return;
-                
-            _currentAttackTarget.TakeDamage((int)_enemyEntity.GetAttackDamage());
-            _enemyEntity.RegisterAttack();
-                    
-            Debug.Log($"Enemy {_enemyEntity.GetId()} attacked {_currentAttackTarget.GetId()} for {_enemyEntity.GetAttackDamage()} damage!");
-        }
-        
-        private void OnEnemyDeath()
-        {
-            Debug.Log($"Enemy {_enemyEntity.GetId()} died!");
+            Debug.Log($"EnemyController: Enemy {_enemyEntity.GetId()} died!");
+            
+            _cancellationTokenSource?.Cancel();
             
             if (_upgradeSpawner != null)
             {
                 _upgradeSpawner.TrySpawnUpgrade(transform.position);
             }
             
-            if (_navMeshAgent != null)
-            {
-                _navMeshAgent.isStopped = true;
-            }
+            _movementSystem.StopMovement(_navMeshAgent);
             
             if (_entitiesManager != null && _enemyEntity != null)
             {
@@ -317,22 +136,19 @@ namespace Controllers
             {
                 gameObject.SetActive(false);
             }
+            
+            _isInitialized = false;
         }
         
         private void OnDisable()
         {
-            _isInitialized = false;
-            try
-            {
-                if (_navMeshAgent != null && _navMeshAgent.isActiveAndEnabled && _navMeshAgent.isOnNavMesh)
-                {
-                    _navMeshAgent.ResetPath();
-                }
-            }
-            catch
-            {
-            }//todo 
-
+            _cancellationTokenSource?.Cancel();
+        }
+        
+        private void OnDestroy()
+        {
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
         }
     }
 }

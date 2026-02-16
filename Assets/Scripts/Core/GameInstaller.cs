@@ -2,6 +2,8 @@
 using VContainer.Unity;
 using UnityEngine;
 using TacticalDroneCommander.Infrastructure;
+using TacticalDroneCommander.Core.Events;
+using TacticalDroneCommander.Systems;
 using Gameplay;
 using UI;
 
@@ -13,7 +15,11 @@ namespace TacticalDroneCommander.Core
         {
             Debug.Log("GameInstaller: Registering services...");
         
+            //core systems
+            builder.Register<EventBus>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
             builder.Register<GameStateMachine>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
+            
+            //infrastructure
             builder.Register<AssetProvider>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
             builder.Register<SaveLoadService>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
             builder.Register<PoolService>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
@@ -21,6 +27,13 @@ namespace TacticalDroneCommander.Core
             builder.Register<InputController>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
             builder.Register<HealthBarService>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
             
+            //gameplay systems
+            builder.Register<CombatSystem>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
+            builder.Register<RegenerationSystem>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
+            builder.Register<MovementSystem>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
+            builder.Register<TargetingSystem>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
+            
+            //managers and services
             builder.Register<EntitiesManager>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
             builder.Register<TargetFinder>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();
             builder.Register<BaseSpawner>(Lifetime.Singleton).AsImplementedInterfaces().AsSelf();

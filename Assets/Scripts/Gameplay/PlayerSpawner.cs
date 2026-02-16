@@ -1,6 +1,8 @@
 ﻿using UnityEngine;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
 using TacticalDroneCommander.Infrastructure;
+using TacticalDroneCommander.Systems;
 using Entities;
 using Controllers;
 using UI;
@@ -17,25 +19,33 @@ namespace Gameplay
         private readonly GameConfig _config;
         private readonly IEntitiesManager _entitiesManager;
         private readonly IPoolService _poolService;
-        private readonly ITargetFinder _targetFinder;
-        private readonly IAssetProvider _assetProvider;
         private readonly IHealthBarService _healthBarService;
-        private int _droneCounter = 0;
+        
+        private readonly ICombatSystem _combatSystem;
+        private readonly IRegenerationSystem _regenerationSystem;
+        private readonly ITargetingSystem _targetingSystem;
+        private readonly IEventBus _eventBus;
+        
+        private int _droneCounter;
         
         public PlayerSpawner(
             GameConfig config, 
             IEntitiesManager entitiesManager,
             IPoolService poolService,
-            ITargetFinder targetFinder,
-            IAssetProvider assetProvider,
-            IHealthBarService healthBarService)
+            IHealthBarService healthBarService,
+            ICombatSystem combatSystem,
+            IRegenerationSystem regenerationSystem,
+            ITargetingSystem targetingSystem,
+            IEventBus eventBus)
         {
             _config = config;
             _entitiesManager = entitiesManager;
             _poolService = poolService;
-            _targetFinder = targetFinder;
-            _assetProvider = assetProvider;
             _healthBarService = healthBarService;
+            _combatSystem = combatSystem;
+            _regenerationSystem = regenerationSystem;
+            _targetingSystem = targetingSystem;
+            _eventBus = eventBus;
         }
         
         public PlayerEntity SpawnPlayer(Vector3 spawnPosition)
@@ -59,11 +69,21 @@ namespace Gameplay
                 controller = playerObject.AddComponent<PlayerDroneController>();
             }
             
-            controller.Initialize(player, _targetFinder, _poolService, _entitiesManager, _config);
+            controller.Initialize(
+                player,
+                _poolService,
+                _entitiesManager,
+                _config,
+                _combatSystem,
+                _regenerationSystem,
+                _targetingSystem,
+                _eventBus);
             
             _entitiesManager.RegisterEntity(player);
             
             _ = _healthBarService.CreateHealthBarForEntity(player);
+            
+            _eventBus.Publish(new EntitySpawnedEvent(player, spawnPosition));
             
             Debug.Log($"PlayerSpawner: Spawned {playerId} at {spawnPosition}");
             

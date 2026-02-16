@@ -1,7 +1,9 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
 using TacticalDroneCommander.Infrastructure;
+using TacticalDroneCommander.Systems;
 using Entities;
 using Controllers;
 using UI;
@@ -22,6 +24,12 @@ namespace Gameplay
         private readonly IAssetProvider _assetProvider;
         private readonly IUpgradeSpawner _upgradeSpawner;
         private readonly IHealthBarService _healthBarService;
+        
+        private readonly ICombatSystem _combatSystem;
+        private readonly IMovementSystem _movementSystem;
+        private readonly ITargetingSystem _targetingSystem;
+        private readonly IEventBus _eventBus;
+        
         private int _enemyCounter;
         
         public EnemySpawner(
@@ -30,7 +38,11 @@ namespace Gameplay
             IPoolService poolService,
             IAssetProvider assetProvider,
             IUpgradeSpawner upgradeSpawner,
-            IHealthBarService healthBarService)
+            IHealthBarService healthBarService,
+            ICombatSystem combatSystem,
+            IMovementSystem movementSystem,
+            ITargetingSystem targetingSystem,
+            IEventBus eventBus)
         {
             _config = config;
             _entitiesManager = entitiesManager;
@@ -38,6 +50,10 @@ namespace Gameplay
             _assetProvider = assetProvider;
             _upgradeSpawner = upgradeSpawner;
             _healthBarService = healthBarService;
+            _combatSystem = combatSystem;
+            _movementSystem = movementSystem;
+            _targetingSystem = targetingSystem;
+            _eventBus = eventBus;
             _enemyCounter = 0;
         }
         
@@ -56,19 +72,24 @@ namespace Gameplay
             
             EnemyController controller = enemyObject.GetComponent<EnemyController>();
             
-            controller.Initialize(enemy, _poolService, _entitiesManager, _config, _upgradeSpawner);
-            
-            Entity baseEntity = _entitiesManager.GetEntity("base");
-            if (baseEntity != null)
-            {
-                controller.SetTargetEntity(baseEntity);
-            }
+            controller.Initialize(
+                enemy,
+                _poolService,
+                _entitiesManager,
+                _config,
+                _combatSystem,
+                _movementSystem,
+                _targetingSystem,
+                _eventBus,
+                _upgradeSpawner);
             
             _entitiesManager.RegisterEntity(enemy);
             
             _ = _healthBarService.CreateHealthBarForEntity(enemy);
             
-            Debug.Log($"EnemySpawner: Spawned {enemyId} at {spawnPosition}, target: {targetPosition}");
+            _eventBus.Publish(new EntitySpawnedEvent(enemy, spawnPosition));
+            
+            Debug.Log($"EnemySpawner: Spawned {enemyId} at {spawnPosition}");
             
             return enemy;
         }
@@ -94,8 +115,7 @@ namespace Gameplay
         
         private Vector3 GenerateSpawnPosition(Vector3 centerPosition)
         {
-            //todo rework
-            float spawnRadius = 10f;
+            float spawnRadius = 15f;//todo
             float angle = Random.Range(0f, 360f) * Mathf.Deg2Rad;
             
             Vector3 offset = new Vector3(
