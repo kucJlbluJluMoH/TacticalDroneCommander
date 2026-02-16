@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
 using Entities;
 using Controllers;
 
@@ -9,37 +10,52 @@ namespace Gameplay
     public interface IPlayerDroneManager
     {
         void SpawnInitialDrone();
-        void SpawnDrone(Vector3 position);
+        void SpawnDrone();
         void SelectDrone(PlayerDroneController drone);
         void CommandSelectedDroneToPosition(Vector3 position);
         PlayerDroneController GetSelectedDrone();
         List<PlayerEntity> GetAllPlayerDrones();
+        void Initialize();
     }
     
     public class PlayerDroneManager : IPlayerDroneManager
     {
         private readonly IPlayerSpawner _playerSpawner;
         private readonly GameConfig _config;
+        private readonly IEventBus _eventBus;
         
         private List<PlayerEntity> _playerDrones = new List<PlayerEntity>();
         private PlayerDroneController _selectedDrone;
         private int _droneCounter;
         
-        public PlayerDroneManager(IPlayerSpawner playerSpawner, GameConfig config)
+        public PlayerDroneManager(IPlayerSpawner playerSpawner, GameConfig config, IEventBus eventBus)
         {
             _playerSpawner = playerSpawner;
             _config = config;
+            _eventBus = eventBus;
+        }
+        
+        public void Initialize()
+        {
+            _eventBus.Subscribe<WaveCompletedEvent>(OnWaveCompleted);
+            Debug.Log("PlayerDroneManager: Subscribed to WaveCompletedEvent");
+        }
+        
+        private void OnWaveCompleted(WaveCompletedEvent evt)
+        {
+            Debug.Log($"PlayerDroneManager: Wave {evt.WaveNumber} completed. Spawning reward drone...");
+            SpawnDrone();
         }
         
         public void SpawnInitialDrone()
         {
-            Vector3 spawnPosition = _config.BaseCoordinates + new Vector3(2f, 0f, 0f);
-            SpawnDrone(spawnPosition);
+            SpawnDrone();
         }
-        
-        public void SpawnDrone(Vector3 position)
+        public void SpawnDrone()
         {
-            PlayerEntity drone = _playerSpawner.SpawnPlayer(position);
+            var randomOffset = new Vector3(Random.Range(-2f, 2f), 0f, Random.Range(-2f, 2f));
+            Vector3 spawnPosition = _config.BaseCoordinates + randomOffset;
+            PlayerEntity drone = _playerSpawner.SpawnPlayer(spawnPosition);
             if (drone != null)
             {
                 _playerDrones.Add(drone);

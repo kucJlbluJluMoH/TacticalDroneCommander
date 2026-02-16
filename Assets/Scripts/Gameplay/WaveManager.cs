@@ -48,6 +48,11 @@ namespace Gameplay
 
         private void OnEntityDied(EntityDiedEvent evt)
         {
+            if (evt.Entity is BaseEntity)
+            {
+                Debug.Log("WaveManager: Base died! Publishing GameOverEvent with defeat.");
+                _eventBus.Publish(new GameOverEvent(false, _currentWave));
+            }
         }
 
         private void OnGameStateChanged(GameStateChangedEvent evt)
@@ -95,7 +100,11 @@ namespace Gameplay
         private void OnWaveCompleted()
         {
             Debug.Log($"WaveManager: Wave {_currentWave} completed!");
-            
+            if (_currentWave >= _config.MaxWaves)
+            {
+                _eventBus.Publish(new GameOverEvent(true,_currentWave));
+                return;
+            }
             _eventBus.Publish(new WaveCompletedEvent(_currentWave));
         }
         

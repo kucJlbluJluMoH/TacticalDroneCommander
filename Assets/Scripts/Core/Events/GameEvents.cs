@@ -114,5 +114,16 @@ namespace TacticalDroneCommander.Core.Events
             NewState = newState;
         }
     }
+
+    public class GameOverEvent : IGameEvent
+    {
+        public bool PlayerWon { get; }
+        public int WaveNumber { get; }
+        public GameOverEvent(bool playerWon, int waveNumber)
+        {
+            PlayerWon = playerWon;
+            WaveNumber = waveNumber;
+        }
+    }
 }
 

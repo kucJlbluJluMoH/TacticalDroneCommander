@@ -60,14 +60,14 @@ namespace Controllers
             if (!_isInitialized)
                 return;
 
-            Debug.Log("BaseController: Base destroyed! Game Over!");
+            Debug.Log("BaseController: Base destroyed! Publishing EntityDiedEvent...");
+            
+            _eventBus?.Publish(new EntityDiedEvent(_baseEntity, transform.position));
             
             if (_entitiesManager != null && _baseEntity != null)
             {
                 _entitiesManager.UnregisterEntity(_baseEntity);
             }
-            
-            _stateMachine?.SwitchState(GameState.GameOver);
             
             gameObject.SetActive(false);
             _isInitialized = false;

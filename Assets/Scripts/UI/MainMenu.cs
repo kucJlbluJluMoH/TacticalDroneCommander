@@ -1,4 +1,6 @@
 ﻿using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
+using TacticalDroneCommander.Infrastructure;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,11 +15,26 @@ namespace UI
         [SerializeField] private Button _startButton;
         [SerializeField] private Button _exitButton;
         [Inject] private IGameStateMachine _gameStateMachine;
-        
+        [Inject] private IEventBus _eventBus;
+        [Inject] private ISaveLoadService _saveLoadService;
         private void Start()
         {
             _startButton.onClick.AddListener(OnStartButtonClicked);
             _exitButton.onClick.AddListener(OnExitButtonClicked);
+            _eventBus.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+            
+            if (_gameStateMachine.CurrentState == GameState.Pregame)
+            {
+                Show();
+            }
+        }
+        
+        private void OnGameStateChanged(GameStateChangedEvent obj)
+        {
+            if (obj.NewState == GameState.Pregame)
+            {
+                Show();
+            }
         }
 
         private void OnStartButtonClicked()
@@ -35,6 +52,9 @@ namespace UI
 
         public void Show()
         {
+            int highScore = _saveLoadService.GetSaveData().highScore;
+            Debug.Log($"MainMenu.Show(): Displaying high score: {highScore}");
+            _scoreText.text = $"High Score: {highScore}";
             _hud.SetActive(true);
         }
 

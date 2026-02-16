@@ -14,33 +14,40 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   SaveFileName: save.json
   BaseEnemiesPerWave: 5
-  EnemiesCountMultiplier: 1.3
+  EnemiesCountMultiplier: 1.4
   TimeBetweenWaves: 5
+  MaxWaves: 10
   BaseCoordinates: {x: 0, y: 0, z: 0}
+  BaseHP: 200
+  BaseRegenerationAmount: 10
+  BaseRegenerationDelay: 5
+  BaseRegenerationRate: 2
   PlayerDroneSpeed: 5
+  PlayerHoverHeight: 2
   PlayerDroneHP: 100
   PlayerAttackDamage: 15
-  PlayerAttackRange: 10
+  PlayerAttackRange: 5
   PlayerAttackCooldown: 0.5
-  PlayerHoverHeight: 2
-  BaseHP: 200
-  EnemyDroneHP: 50
+  PlayerRegenerationAmount: 5
+  PlayerRegenerationDelay: 3
+  PlayerRegenerationRate: 1
   EnemyDroneSpeed: 3
+  EnemyDroneHP: 50
   EnemyAttackDamage: 10
-  EnemyAttackRange: 2
-  EnemyAttackCooldown: 1.5
-  EnemyRegenerationRate: 0
-  UpgradeDropChance: 0.3
+  EnemyAttackRange: 3
+  EnemyAttackCooldown: 1
+  EnemyBaseTargetProbability: 0.6
+  UpgradeDropChance: 0.2
   UpgradeLifetime: 10
   UpgradeValues:
   - Type: AttackSpeed
-    Value: 0.85
+    Value: 0.9
   - Type: AttackRange
-    Value: 1.2
+    Value: 1.1
   - Type: AttackDamage
-    Value: 1.3
+    Value: 1.1
   - Type: MoveSpeed
-    Value: 1.15
+    Value: 1.1
   PoolConfigs:
   - Key: Enemy
     PrefabPath: Prefabs/Enemy

@@ -4,6 +4,7 @@ using System.Threading;
 using UnityEngine;
 using TacticalDroneCommander.Core.States;
 using TacticalDroneCommander.Core.Events;
+using TacticalDroneCommander.Infrastructure;
 
 namespace TacticalDroneCommander.Core
 {
@@ -31,13 +32,15 @@ namespace TacticalDroneCommander.Core
     {
         private readonly Dictionary<GameState, IGameState> _states;
         private readonly IEventBus _eventBus;
+        private readonly ISaveLoadService _saveLoadService;
         private IGameState _currentStateHandler;
         private GameState _stateBeforePause;
         private CancellationTokenSource _stateCancellationTokenSource;
         
-        public GameStateMachine(IEventBus eventBus, GameConfig config)
+        public GameStateMachine(IEventBus eventBus, GameConfig config, ISaveLoadService saveLoadService)
         {
             _eventBus = eventBus;
+            _saveLoadService = saveLoadService;
             _stateCancellationTokenSource = new CancellationTokenSource();
             
             _states = new Dictionary<GameState, IGameState>
@@ -45,17 +48,27 @@ namespace TacticalDroneCommander.Core
                 { GameState.Pregame, new PregameState() },
                 { GameState.Wave, new WaveState() },
                 { GameState.Postwave, new PostwaveState(config, this) },
-                { GameState.GameOver, new GameOverState() }
+                { GameState.GameOver, new GameOverState(_saveLoadService) }
             };
             
             CurrentState = GameState.Pregame;
             _currentStateHandler = _states[CurrentState];
             
             _eventBus.Subscribe<WaveCompletedEvent>(OnWaveCompleted);
+            _eventBus.Subscribe<GameOverEvent>(OnGameOver);
             
             Debug.Log("GameStateMachine: Initialized with State Pattern");
         }
-        
+        private void OnGameOver(GameOverEvent evt)
+        {
+            Debug.Log($"GameStateMachine: Game Over event received (PlayerWon={evt.PlayerWon}, Wave={evt.WaveNumber}), transitioning to GameOver state");
+            
+            var gameOverState = _states[GameState.GameOver] as GameOverState;
+            gameOverState?.SetGameOverData(evt.PlayerWon, evt.WaveNumber);
+            
+            SwitchState(GameState.GameOver);
+        }
+
         public GameState CurrentState { get; private set; }
         
         public event Action<GameState> OnStateChanged;
@@ -102,7 +115,7 @@ namespace TacticalDroneCommander.Core
             Debug.Log($"GameStateMachine: Wave {evt.WaveNumber} completed, transitioning to Postwave");
             SwitchState(GameState.Postwave);
         }
-
+        
         public bool IsInState(GameState state)
         {
             return CurrentState == state;

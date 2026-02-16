@@ -11,19 +11,10 @@ namespace TacticalDroneCommander.Infrastructure
     public class SaveData
     {
         public int highScore;
-        public int unlockedDrones;
         public string lastPlayDate;
-
-        public int HighScore
-        {
-            get => highScore;
-            set => highScore = value;
-        }
-
         public SaveData()
         {
             highScore = 0;
-            unlockedDrones = 1;
             lastPlayDate = DateTime.Now.ToString();
         }
     }
@@ -44,11 +35,11 @@ namespace TacticalDroneCommander.Infrastructure
 
         public SaveData CurrentSave { get; private set; }
 
-        [Inject]
         public SaveLoadService(Core.GameConfig config)
         {
             _config = config;
             CurrentSave = new SaveData();
+            Debug.Log($"SaveLoadService: Initialized. Save path will be: {SavePath}");
         }
 
         public void Save()
@@ -74,7 +65,7 @@ namespace TacticalDroneCommander.Infrastructure
                 {
                     string json = File.ReadAllText(SavePath);
                     CurrentSave = JsonConvert.DeserializeObject<SaveData>(json);
-                    Debug.Log($"SaveLoadService: Game loaded from {SavePath}");
+                    Debug.Log($"SaveLoadService: Game loaded from {SavePath}. HighScore: {CurrentSave.highScore}");
                 }
                 else
                 {

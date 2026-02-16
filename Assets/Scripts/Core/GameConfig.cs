@@ -16,7 +16,9 @@ namespace TacticalDroneCommander.Core
         public float EnemiesCountMultiplier = 1.3f;
         [Tooltip("Time between waves in seconds")]
         public float TimeBetweenWaves = 5f;
-
+        [Tooltip("Maximum number of waves")]
+        public int MaxWaves = 10;
+        
         [Header("═══════════════ BASE ═══════════════")]
         [Tooltip("Base coordinates")]
         public Vector3 BaseCoordinates = new Vector3(0, 0, 0);

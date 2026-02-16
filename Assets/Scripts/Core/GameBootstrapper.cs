@@ -25,6 +25,7 @@ namespace TacticalDroneCommander.Core
             Debug.Log("GameBootstrapper: Starting game initialization...");
             
             _waveManager.Initialize();
+            _playerDroneManager.Initialize();
             
             _saveLoadService.Load();
             Debug.Log("GameBootstrapper: Save data loaded");
