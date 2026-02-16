@@ -53,7 +53,7 @@ namespace UI
         public void Show()
         {
             int highScore = _saveLoadService.GetSaveData().highScore;
-            Debug.Log($"MainMenu.Show(): Displaying high score: {highScore}");
+            Debug.Log($"MainMenu.Show(): Displaying high score: {highScore}"); 
             _scoreText.text = $"High Score: {highScore}";
             _hud.SetActive(true);
         }
