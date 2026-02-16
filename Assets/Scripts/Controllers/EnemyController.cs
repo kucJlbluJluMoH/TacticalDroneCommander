@@ -48,6 +48,10 @@ namespace Controllers
             IEventBus eventBus,
             IUpgradeSpawner upgradeSpawner = null)
         {
+            _cancellationTokenSource?.Cancel();
+            _cancellationTokenSource?.Dispose();
+            _cancellationTokenSource = new CancellationTokenSource();
+            
             _enemyEntity = enemyEntity;
             _poolService = poolService;
             _entitiesManager = entitiesManager;
@@ -79,6 +83,9 @@ namespace Controllers
 
                 await UniTask.Yield(cancellationToken);
                 
+                if (_enemyEntity.IsDead())
+                    break;
+                
                 if (_huntingTarget == null || _huntingTarget.IsDead())
                 {
                     _huntingTarget = _targetingSystem.SelectTargetForEnemy(_enemyEntity, _entitiesManager, _config.EnemyBaseTargetProbability);
@@ -98,6 +105,9 @@ namespace Controllers
                     }
                 }
                 
+                if (_enemyEntity.IsDead())
+                    break;
+                
                 await UniTask.Delay(100, cancellationToken: cancellationToken);
             }
             
@@ -113,6 +123,8 @@ namespace Controllers
                 return;
 
             Debug.Log($"EnemyController: Enemy {_enemyEntity.GetId()} died!");
+            
+            _isInitialized = false;
             
             _cancellationTokenSource?.Cancel();
             
@@ -136,8 +148,6 @@ namespace Controllers
             {
                 gameObject.SetActive(false);
             }
-            
-            _isInitialized = false;
         }
         
         private void OnDisable()
