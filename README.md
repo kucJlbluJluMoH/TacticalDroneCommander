@@ -40,7 +40,7 @@ This project demonstrates **production-ready architecture** with clear separatio
 ## Technical Stack
 
 ### Core Technologies
-- **Unity 2022.3+** - Game engine
+- **Unity 6000.0.63f1+ ** - Game engine
 - **C# 11.0** - Programming language
 - **.NET Standard 2.1** - Runtime
 
