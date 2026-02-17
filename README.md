@@ -2,7 +2,7 @@
 
 A **Tower Defense / RTS hybrid** game built with Unity, demonstrating professional architecture patterns, modern C# practices, and scalable system design.
 
-**Tech Stack:** Unity 2022.3+ | C# 11.0 | .NET Standard 2.1
+**Tech Stack:** Unity 6000.0.63f1+ | C# 11.0 | .NET Standard 2.1
 
 ## Overview
 
