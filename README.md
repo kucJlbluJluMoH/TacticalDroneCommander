@@ -1,4 +1,4 @@
-# Tactical Drone Commander
+﻿actical Drone Commander
 
 A **Tower Defense / RTS hybrid** game built with Unity, demonstrating professional architecture patterns, modern C# practices, and scalable system design.
 
@@ -40,7 +40,7 @@ This project demonstrates **production-ready architecture** with clear separatio
 ## Technical Stack
 
 ### Core Technologies
-- **Unity 6000.0.63f1+ ** - Game engine
+- **Unity 6000.0.63f1+** - Game engine
 - **C# 11.0** - Programming language
 - **.NET Standard 2.1** - Runtime
 
