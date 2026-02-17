@@ -23,59 +23,6 @@ A **Tower Defense / RTS hybrid** game built with Unity, demonstrating profession
 
 This project demonstrates **production-ready architecture** with clear separation of concerns and adherence to SOLID principles.
 
-### Project Structure
-
-```
-Assets/Scripts/
-├── Core/                      # Core game systems
-│   ├── GameStateMachine.cs   # FSM implementation with State Pattern
-│   ├── GameBootstrapper.cs   # Game initialization & lifecycle
-│   ├── GameInstaller.cs      # Dependency Injection configuration
-│   ├── MainLifetimeScope.cs  # VContainer root scope
-│   ├── Events/               # Event-Driven Architecture
-│   │   ├── EventBus.cs       # Custom type-safe event bus
-│   │   └── GameEvents.cs     # Typed event definitions
-│   └── States/               # Game state implementations
-│       ├── PregameState.cs
-│       ├── WaveState.cs
-│       ├── PostwaveState.cs
-│       └── GameOverState.cs
-│
-├── Infrastructure/           # Cross-cutting concerns
-│   ├── SaveLoadService.cs   # Persistent data management
-│   ├── PoolService.cs       # Object pooling for performance
-│   ├── InputController.cs   # Centralized input handling
-│   └── AssetProvider.cs     # Resource loading abstraction
-│
-├── Systems/                  # Game logic systems (ECS-inspired)
-│   ├── CombatSystem.cs      # Attack processing & damage calculation
-│   ├── MovementSystem.cs    # Entity movement & NavMesh integration
-│   ├── TargetingSystem.cs   # Target selection algorithms
-│   └── RegenerationSystem.cs # Health regeneration logic
-│
-├── Entities/                 # Domain models
-│   ├── Entity.cs            # Base entity class
-│   ├── PlayerEntity.cs      # Player drone with upgrades
-│   ├── EnemyEntity.cs       # Enemy drone
-│   └── BaseEntity.cs        # Defensive structure
-│
-├── Controllers/              # MonoBehaviour bridges
-│   ├── PlayerDroneController.cs
-│   ├── EnemyController.cs
-│   └── BaseController.cs
-│
-├── Gameplay/                 # Game-specific logic
-│   ├── WaveManager.cs       # Wave progression system
-│   ├── EntitiesManager.cs   # Entity registry & lookup
-│   ├── EnemySpawner.cs      # Enemy instantiation
-│   └── UpgradeSpawner.cs    # Power-up generation
-│
-└── UI/                       # User interface
-    ├── MainMenu.cs
-    ├── GameOver.cs
-    └── HealthBarService.cs
-```
-
 ### Design Patterns Used
 
 | Pattern | Implementation | Purpose |
@@ -190,22 +137,6 @@ This project demonstrates:
 - [ ] Add localization support
 - [ ] Implement replay system
 - [ ] Add analytics integration
-
----
-
-## Code Quality
-
-### Naming Conventions
-- **Interfaces**: `IServiceName` (e.g., `IEventBus`)
-- **Private fields**: `_camelCase` (e.g., `_gameStateMachine`)
-- **Public methods**: `PascalCase` (e.g., `SwitchState`)
-- **Events**: `PascalCase` with "Event" suffix (e.g., `WaveCompletedEvent`)
-
-### Architecture Principles
-- **Separation of Concerns**: Each class has a single, well-defined responsibility
-- **Dependency Inversion**: Depend on abstractions (interfaces), not concrete implementations
-- **Open/Closed**: Systems are open for extension, closed for modification
-- **Interface Segregation**: Small, focused interfaces rather than large, monolithic ones
 
 ---
 
