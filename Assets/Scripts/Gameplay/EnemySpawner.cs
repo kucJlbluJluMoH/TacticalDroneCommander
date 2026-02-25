@@ -14,6 +14,7 @@ namespace Gameplay
     {
         EnemyEntity SpawnEnemy(Vector3 spawnPosition, Vector3 targetPosition);
         List<EnemyEntity> SpawnEnemies(int count, Vector3 targetPosition);
+        void DespawnAllEnemies();
     }
     
     public class EnemySpawner : IEnemySpawner
@@ -125,6 +126,20 @@ namespace Gameplay
             );
             
             return centerPosition + offset;
+        }
+
+        public void DespawnAllEnemies()
+        {
+            var enemies = new List<EnemyEntity>(_entitiesManager.GetEntitiesOfType<EnemyEntity>());
+            foreach (var enemy in enemies)
+            {
+                _healthBarService.RemoveHealthBar(enemy);
+                var controller = enemy.GetGameObject()?.GetComponent<EnemyController>();
+                controller?.Despawn();
+                _entitiesManager.UnregisterEntity(enemy);
+            }
+
+            Debug.Log($"EnemySpawner: Despawned {enemies.Count} enemies.");
         }
     }
 }

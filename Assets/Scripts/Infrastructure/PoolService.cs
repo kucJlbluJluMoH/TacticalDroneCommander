@@ -8,6 +8,7 @@ namespace TacticalDroneCommander.Infrastructure
     {
         GameObject Get(string poolKey, Vector3 position, Quaternion rotation);
         void Return(string poolKey, GameObject obj);
+        void ReturnAll(string poolKey);
         void CreatePool(string poolKey, GameObject prefab, int initialSize);
     }
     

@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
 using TacticalDroneCommander.Infrastructure;
 using Entities;
 
@@ -8,6 +9,7 @@ namespace Gameplay
     public interface IUpgradeSpawner
     {
         void TrySpawnUpgrade(Vector3 position);
+        void DespawnAllUpgrades();
     }
     
     public class UpgradeSpawner : IUpgradeSpawner
@@ -15,10 +17,17 @@ namespace Gameplay
         private readonly GameConfig _config;
         private readonly IPoolService _poolService;
         
-        public UpgradeSpawner(GameConfig config, IPoolService poolService)
+        public UpgradeSpawner(GameConfig config, IPoolService poolService, IEventBus eventBus)
         {
             _config = config;
             _poolService = poolService;
+            eventBus.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+        }
+
+        private void OnGameStateChanged(GameStateChangedEvent evt)
+        {
+            if (evt.NewState == GameState.Pregame && evt.PreviousState != GameState.Pause)
+                DespawnAllUpgrades();
         }
         
         public void TrySpawnUpgrade(Vector3 position)
@@ -51,6 +60,11 @@ namespace Gameplay
             
             Debug.Log($"UpgradeSpawner: Spawned {upgradeType} upgrade at {position}");
         }
+
+        public void DespawnAllUpgrades()
+        {
+            _poolService.ReturnAll("Upgrade");
+            Debug.Log("UpgradeSpawner: All upgrades despawned.");
+        }
     }
 }
-

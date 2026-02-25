@@ -3,12 +3,14 @@ using UnityEngine.InputSystem;
 using VContainer;
 using Controllers;
 using TacticalDroneCommander.Core;
+using TacticalDroneCommander.Core.Events;
 
 namespace Gameplay
 {
     public class PlayerInputHandler : MonoBehaviour
     {
         [Inject] private IPlayerDroneManager _droneManager;
+        [Inject] private IGameStateMachine _gameStateMachine;
 
         private Camera _mainCamera;
         private InputSystem_Actions _inputActions;
@@ -18,26 +20,29 @@ namespace Gameplay
             _mainCamera = Camera.main;
             _inputActions = new InputSystem_Actions();
         }
+
         private void OnEnable()
         {
             _inputActions.Enable();
             _inputActions.Player.Attack.performed += OnAttackPerformed;
         }
+
         private void OnDisable()
         {
             _inputActions.Player.Attack.performed -= OnAttackPerformed;
             _inputActions.Disable();
         }
+
         private void OnAttackPerformed(InputAction.CallbackContext context)
         {
+            if (!_gameStateMachine.IsInState(GameState.Wave))
+                return;
+
             HandleLeftClick();
-            Debug.Log("PlayerInputHandler: Attack action performed!");
         }
 
         private void HandleLeftClick()
         {
-            Debug.Log("PlayerInputHandler: Left click detected, processing input...");
-            
             Ray ray = _mainCamera.ScreenPointToRay(Mouse.current.position.ReadValue());
 
             if (Physics.Raycast(ray, out RaycastHit hit))

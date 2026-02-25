@@ -135,11 +135,6 @@ namespace Controllers
             
             _movementSystem.StopMovement(_navMeshAgent);
             
-            if (_entitiesManager != null && _enemyEntity != null)
-            {
-                _entitiesManager.UnregisterEntity(_enemyEntity);
-            }
-            
             if (_poolService != null)
             {
                 _poolService.Return("Enemy", gameObject);
@@ -148,6 +143,21 @@ namespace Controllers
             {
                 gameObject.SetActive(false);
             }
+        }
+
+        public void Despawn()
+        {
+            if (!_isInitialized)
+                return;
+
+            _isInitialized = false;
+            _cancellationTokenSource?.Cancel();
+            _movementSystem.StopMovement(_navMeshAgent);
+
+            if (_poolService != null)
+                _poolService.Return("Enemy", gameObject);
+            else
+                gameObject.SetActive(false);
         }
         
         private void OnDisable()

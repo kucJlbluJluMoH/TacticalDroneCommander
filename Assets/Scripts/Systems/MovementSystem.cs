@@ -10,7 +10,6 @@ namespace TacticalDroneCommander.Systems
         void MoveToPosition(Entity entity, Vector3 targetPosition, float duration);
         void MoveWithNavMesh(NavMeshAgent agent, Entity entity, Vector3 targetPosition);
         void StopMovement(NavMeshAgent agent);
-        bool HasReachedDestination(NavMeshAgent agent);
     }
     
     public class MovementSystem : IMovementSystem
@@ -21,7 +20,9 @@ namespace TacticalDroneCommander.Systems
                 return;
 
             var transform = entity.GetTransform();
-            
+
+            DOTween.Kill(transform);
+
             transform.DOMove(targetPosition, duration)
                 .SetEase(Ease.InOutQuad);
 
@@ -41,6 +42,8 @@ namespace TacticalDroneCommander.Systems
             if (agent == null || !agent.isActiveAndEnabled || entity == null)
                 return;
 
+            DOTween.Kill(entity.GetTransform());
+
             if (entity is EnemyEntity enemyEntity)
             {
                 agent.speed = enemyEntity.GetMoveSpeed();
@@ -51,6 +54,7 @@ namespace TacticalDroneCommander.Systems
                 agent.speed = playerEntity.GetMoveSpeed();
             }
 
+            agent.isStopped = false;
             agent.SetDestination(targetPosition);
         }
 
@@ -62,7 +66,7 @@ namespace TacticalDroneCommander.Systems
             }
         }
 
-        public bool HasReachedDestination(NavMeshAgent agent)
+        private bool HasReachedDestination(NavMeshAgent agent)
         {
             if (agent == null || !agent.isActiveAndEnabled)
                 return false;
@@ -70,9 +74,7 @@ namespace TacticalDroneCommander.Systems
             if (!agent.pathPending && agent.remainingDistance <= agent.stoppingDistance)
             {
                 if (!agent.hasPath || agent.velocity.sqrMagnitude == 0f)
-                {
                     return true;
-                }
             }
 
             return false;

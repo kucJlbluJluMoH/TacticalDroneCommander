@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
 using DG.Tweening;
 using Entities;
+using TacticalDroneCommander.Core.Events;
 using TacticalDroneCommander.Infrastructure;
 
 namespace Controllers
@@ -11,26 +12,26 @@ namespace Controllers
         [SerializeField] private float _maxLifetime = 5f;
         
         private Entity _target;
+        private Entity _attacker;
         private float _damage;
         private IPoolService _poolService;
+        private IEventBus _eventBus;
         private Tween _moveTween;
         private bool _isInitialized;
         
-        public void Initialize(Entity target, float damage, IPoolService poolService)
+        public void Initialize(Entity attacker, Entity target, float damage, IPoolService poolService, IEventBus eventBus)
         {
+            _attacker = attacker;
             _target = target;
             _damage = damage;
             _poolService = poolService;
+            _eventBus = eventBus;
             _isInitialized = true;
             
             if (target != null && !target.IsDead())
-            {
                 MoveToTarget();
-            }
             else
-            {
                 ReturnToPool();
-            }
         }
         
         private void MoveToTarget()
@@ -71,7 +72,10 @@ namespace Controllers
             if (_target != null && !_target.IsDead())
             {
                 _target.TakeDamage((int)_damage);
-                //todo
+                _eventBus.Publish(new EntityDamagedEvent(_target, _attacker, _damage));
+                
+                if (_target.IsDead())
+                    _eventBus.Publish(new EntityDiedEvent(_target, _target.GetTransform().position));
             }
             
             ReturnToPool();
@@ -98,4 +102,3 @@ namespace Controllers
         }
     }
 }
-

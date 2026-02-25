@@ -29,6 +29,7 @@ namespace TacticalDroneCommander.Core
             builder.RegisterComponentInHierarchy<GameBootstrapper>();
             builder.RegisterComponentInHierarchy<MainMenu>();
             builder.RegisterComponentInHierarchy<GameOver>();
+            builder.RegisterComponentInHierarchy<PauseMenu>();
             builder.RegisterComponentInHierarchy<PlayerInputHandler>();
             
             Debug.Log("VContainer: All dependencies configured!");

@@ -28,7 +28,10 @@ namespace TacticalDroneCommander.Core.States
 
         public bool CanTransitionTo(GameState newState)
         {
-            return newState == GameState.Postwave || newState == GameState.GameOver || newState == GameState.Pause;
+            return newState == GameState.Postwave
+                || newState == GameState.GameOver
+                || newState == GameState.Pause
+                || newState == GameState.Pregame;
         }
     }
 }

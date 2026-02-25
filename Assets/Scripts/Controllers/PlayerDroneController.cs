@@ -25,11 +25,11 @@ namespace Controllers
         private ICombatSystem _combatSystem;
         private IRegenerationSystem _regenerationSystem;
         private ITargetingSystem _targetingSystem;
+        private IMovementSystem _movementSystem;
         private IEventBus _eventBus;
         
         private bool _isInitialized;
         private bool _isSelected;
-        private Tween _moveTween;
         private CancellationTokenSource _cancellationTokenSource;
         
         private void Awake()
@@ -50,6 +50,7 @@ namespace Controllers
             ICombatSystem combatSystem,
             IRegenerationSystem regenerationSystem,
             ITargetingSystem targetingSystem,
+            IMovementSystem movementSystem,
             IEventBus eventBus)
         {
             _playerEntity = playerEntity;
@@ -59,6 +60,7 @@ namespace Controllers
             _combatSystem = combatSystem;
             _regenerationSystem = regenerationSystem;
             _targetingSystem = targetingSystem;
+            _movementSystem = movementSystem;
             _eventBus = eventBus;
             
             _isInitialized = true;
@@ -84,23 +86,10 @@ namespace Controllers
 
             Vector3 adjustedPosition = new Vector3(targetPosition.x, _config.PlayerHoverHeight, targetPosition.z);
 
-            _moveTween?.Kill();
-
             float distance = Vector3.Distance(transform.position, adjustedPosition);
             float duration = distance / _playerEntity.GetMoveSpeed();
 
-            _moveTween = transform.DOMove(adjustedPosition, duration)
-                .SetEase(Ease.InOutQuad);
-
-            Vector3 direction = (adjustedPosition - transform.position).normalized;
-            if (direction != Vector3.zero)
-            {
-                direction.y = 0;
-                direction.Normalize();
-        
-                Quaternion lookRotation = Quaternion.LookRotation(direction);
-                transform.DORotateQuaternion(lookRotation, 0.3f);
-            }
+            _movementSystem.MoveToPosition(_playerEntity, adjustedPosition, duration);
         }
         
         private async UniTaskVoid AutoAttackLoop(CancellationToken cancellationToken)
@@ -157,10 +146,7 @@ namespace Controllers
             
             _cancellationTokenSource?.Cancel();
             
-            if (_entitiesManager != null && _playerEntity != null)
-            {
-                _entitiesManager.UnregisterEntity(_playerEntity);
-            }
+            _eventBus?.Publish(new EntityDiedEvent(_playerEntity, transform.position));
             
             if (_poolService != null)
             {
@@ -170,6 +156,22 @@ namespace Controllers
             _isInitialized = false;
             gameObject.SetActive(false);
         }
+
+        public void Despawn()
+        {
+            if (!_isInitialized)
+                return;
+
+            _isInitialized = false;
+            _cancellationTokenSource?.Cancel();
+            DOTween.Kill(transform);
+            SetSelected(false);
+
+            if (_poolService != null)
+                _poolService.Return("Drone", gameObject);
+            else
+                gameObject.SetActive(false);
+        }
         
         private void PerformAttack(Entity target)
         {
@@ -178,9 +180,7 @@ namespace Controllers
             {
                 direction.y = 0;
                 direction.Normalize();
-                
-                Quaternion lookRotation = Quaternion.LookRotation(direction);
-                transform.rotation = lookRotation;
+                transform.rotation = Quaternion.LookRotation(direction);
             }
         
             Vector3 spawnPosition = _firePoint != null ? _firePoint.position : transform.position + transform.forward;
@@ -189,13 +189,8 @@ namespace Controllers
             if (bullet != null)
             {
                 BulletController bulletController = bullet.GetComponent<BulletController>();
-                if (bulletController != null)
-                {
-                    bulletController.Initialize(target, _playerEntity.GetAttackDamage(), _poolService);
-                }
+                bulletController?.Initialize(_playerEntity, target, _playerEntity.GetAttackDamage(), _poolService, _eventBus);
             }
-            
-            _combatSystem.ProcessAttack(_playerEntity, target, transform.position);
         }
         
         public void ApplyUpgrade(UpgradeType upgradeType, float value)
@@ -209,12 +204,12 @@ namespace Controllers
         
         private void OnDisable()
         {
-            _moveTween?.Kill();
+            DOTween.Kill(transform);
         }
         
         private void OnDestroy()
         {
-            _moveTween?.Kill();
+            DOTween.Kill(transform);
             _cancellationTokenSource?.Cancel();
             _cancellationTokenSource?.Dispose();
         }

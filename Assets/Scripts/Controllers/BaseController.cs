@@ -64,11 +64,6 @@ namespace Controllers
             
             _eventBus?.Publish(new EntityDiedEvent(_baseEntity, transform.position));
             
-            if (_entitiesManager != null && _baseEntity != null)
-            {
-                _entitiesManager.UnregisterEntity(_baseEntity);
-            }
-            
             gameObject.SetActive(false);
             _isInitialized = false;
         }

@@ -5,7 +5,7 @@ using VContainer.Unity;
 
 namespace TacticalDroneCommander.Core
 {
-    public abstract class InputController : IDisposable
+    public class InputController : IDisposable
     {
         private InputSystem_Actions _inputActions;
 

@@ -59,16 +59,21 @@ namespace Gameplay
         {
             _currentGameState = evt.NewState;
             
-            if (evt.NewState == GameState.Wave)
+            if (evt.NewState == GameState.Wave && evt.PreviousState != GameState.Pause)
             {
                 StartWave();
+            }
+            else if (evt.NewState == GameState.Pregame)
+            {
+                _currentWave = 0;
+                _enemySpawner.DespawnAllEnemies();
             }
         }
         
         public void StartWave(int waveNumber = 0)
         {
-            if(waveNumber!=0)
-                _currentWave = waveNumber-1;
+            if (waveNumber != 0)
+                _currentWave = waveNumber - 1;
             _currentWave++;
             int enemyCount = CalculateEnemyCount();
             
@@ -88,21 +93,22 @@ namespace Gameplay
         {
             if (_currentGameState != GameState.Wave)
             {
+                Debug.Log($"WaveManager.CheckWaveCompletion: skipped, state={_currentGameState}");
                 return;
             }
-            var enemies = _entitiesManager.GetEntitiesOfType<EnemyEntity>();
-            if (!enemies.Any())
-            {
+
+            var enemies = _entitiesManager.GetEntitiesOfType<EnemyEntity>().ToList();
+            Debug.Log($"WaveManager.CheckWaveCompletion: enemies remaining = {enemies.Count}");
+            if (enemies.Count == 0)
                 OnWaveCompleted();
-            }
         }
 
         private void OnWaveCompleted()
         {
-            Debug.Log($"WaveManager: Wave {_currentWave} completed!");
+            Debug.Log($"WaveManager: Wave {_currentWave} completed! MaxWaves={_config.MaxWaves}");
             if (_currentWave >= _config.MaxWaves)
             {
-                _eventBus.Publish(new GameOverEvent(true,_currentWave));
+                _eventBus.Publish(new GameOverEvent(true, _currentWave));
                 return;
             }
             _eventBus.Publish(new WaveCompletedEvent(_currentWave));

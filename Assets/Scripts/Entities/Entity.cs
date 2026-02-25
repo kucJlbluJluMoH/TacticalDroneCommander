@@ -8,17 +8,14 @@ namespace Entities
         private int _maxHealth;
         private GameObject _entityObject;
         
-        private float _lastDamageTime;
-        private float _lastRegenerationTime;
         public EntityTag Tag { get; protected set; }
+
         public Entity(string id, int health, int maxHealth, GameObject entityObject)
         {
             _id = id;
             _health = health;
             _maxHealth = maxHealth;
             _entityObject = entityObject;
-            _lastDamageTime = -999f;
-            _lastRegenerationTime = -999f;
         }
         
         public string GetId() => _id;
@@ -47,28 +44,18 @@ namespace Entities
         
         public void TakeDamage(int damage)
         {
+            if (damage == 0) return;
+            if (damage < 0)
+            {
+                Debug.LogError($"Entity.TakeDamage: negative damage value '{damage}' for entity '{_id}'.");
+                return;
+            }
             _health = Mathf.Max(0, _health - damage);
-            _lastDamageTime = Time.time;
         }
         
         public bool IsDead()
         {
             return _health <= 0;
-        }
-        
-        public float GetLastDamageTime()
-        {
-            return _lastDamageTime;
-        }
-        
-        public float GetLastRegenerationTime()
-        {
-            return _lastRegenerationTime;
-        }
-        
-        public void SetLastRegenerationTime(float time)
-        {
-            _lastRegenerationTime = time;
         }
         
         public void Regenerate(int amount)

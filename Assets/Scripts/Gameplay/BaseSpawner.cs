@@ -22,10 +22,11 @@ namespace Gameplay
         private readonly IAssetProvider _assetProvider;
         private readonly IHealthBarService _healthBarService;
         private readonly IGameStateMachine _stateMachine;
-        
         private readonly IRegenerationSystem _regenerationSystem;
         private readonly IEventBus _eventBus;
-        
+
+        private BaseEntity _baseEntity;
+
         public BaseSpawner(
             GameConfig config, 
             IEntitiesManager entitiesManager,
@@ -42,6 +43,32 @@ namespace Gameplay
             _stateMachine = stateMachine;
             _regenerationSystem = regenerationSystem;
             _eventBus = eventBus;
+
+            _eventBus.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+        }
+
+        private void OnGameStateChanged(GameStateChangedEvent evt)
+        {
+            if (evt.NewState == GameState.Pregame && evt.PreviousState != GameState.Pause)
+                ResetBase();
+        }
+
+        private void ResetBase()
+        {
+            if (_baseEntity == null) return;
+
+            _baseEntity.SetHealth(_baseEntity.GetMaxHealth());
+
+            var go = _baseEntity.GetGameObject();
+            if (go != null && !go.activeSelf)
+            {
+                go.SetActive(true);
+                var controller = go.GetComponent<BaseController>();
+                controller?.Initialize(_baseEntity, _entitiesManager, _stateMachine, _config, _regenerationSystem, _eventBus);
+                _entitiesManager.RegisterEntity(_baseEntity);
+            }
+
+            Debug.Log("BaseSpawner: Base reset to full HP.");
         }
         
         public async UniTask<BaseEntity> SpawnBase()
@@ -79,10 +106,11 @@ namespace Gameplay
             
             _eventBus.Publish(new EntitySpawnedEvent(baseEntity, _config.BaseCoordinates));
             
+            _baseEntity = baseEntity;
+            
             Debug.Log($"BaseSpawner: Base spawned at {_config.BaseCoordinates}");
             
             return baseEntity;
         }
     }
 }
-

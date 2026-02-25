@@ -34,8 +34,10 @@ namespace TacticalDroneCommander.Core
         private readonly IEventBus _eventBus;
         private readonly ISaveLoadService _saveLoadService;
         private IGameState _currentStateHandler;
+        private IGameState _stateHandlerBeforePause;
         private GameState _stateBeforePause;
         private CancellationTokenSource _stateCancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSourceBeforePause;
         
         public GameStateMachine(IEventBus eventBus, GameConfig config, ISaveLoadService saveLoadService)
         {
@@ -125,17 +127,29 @@ namespace TacticalDroneCommander.Core
         {
             if (CurrentState == GameState.Pause)
             {
-                if (_stateBeforePause != GameState.Pause)
-                {
-                    SwitchState(_stateBeforePause);
-                }
+                if (_stateBeforePause == GameState.Pause)
+                    return;
+
+                var previousState = CurrentState;
+                CurrentState = _stateBeforePause;
+                _currentStateHandler = _stateHandlerBeforePause;
+                _stateCancellationTokenSource = _cancellationTokenSourceBeforePause;
+                Time.timeScale = 1f;
+                Debug.Log($"GameStateMachine: Resumed to {CurrentState}");
+                _eventBus.Publish(new GameStateChangedEvent(previousState, CurrentState));
+                OnStateChanged?.Invoke(CurrentState);
             }
             else
             {
                 _stateBeforePause = CurrentState;
-                Time.timeScale = 0f;
+                _stateHandlerBeforePause = _currentStateHandler;
+                _cancellationTokenSourceBeforePause = _stateCancellationTokenSource;
+
+                var previousState = CurrentState;
                 CurrentState = GameState.Pause;
+                Time.timeScale = 0f;
                 Debug.Log("GameStateMachine: Paused");
+                _eventBus.Publish(new GameStateChangedEvent(previousState, CurrentState));
                 OnStateChanged?.Invoke(CurrentState);
             }
         }

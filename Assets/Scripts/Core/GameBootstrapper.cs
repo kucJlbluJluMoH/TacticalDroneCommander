@@ -20,6 +20,10 @@ namespace TacticalDroneCommander.Core
             await InitializeGame();
         }
 
+        private void OnDestroy()
+        {
+        }
+
         private async UniTask InitializeGame()
         {
             Debug.Log("GameBootstrapper: Starting game initialization...");

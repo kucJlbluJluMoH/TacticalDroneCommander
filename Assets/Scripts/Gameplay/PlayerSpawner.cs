@@ -24,6 +24,7 @@ namespace Gameplay
         private readonly ICombatSystem _combatSystem;
         private readonly IRegenerationSystem _regenerationSystem;
         private readonly ITargetingSystem _targetingSystem;
+        private readonly IMovementSystem _movementSystem;
         private readonly IEventBus _eventBus;
         
         private int _droneCounter;
@@ -36,6 +37,7 @@ namespace Gameplay
             ICombatSystem combatSystem,
             IRegenerationSystem regenerationSystem,
             ITargetingSystem targetingSystem,
+            IMovementSystem movementSystem,
             IEventBus eventBus)
         {
             _config = config;
@@ -45,6 +47,7 @@ namespace Gameplay
             _combatSystem = combatSystem;
             _regenerationSystem = regenerationSystem;
             _targetingSystem = targetingSystem;
+            _movementSystem = movementSystem;
             _eventBus = eventBus;
         }
         
@@ -77,6 +80,7 @@ namespace Gameplay
                 _combatSystem,
                 _regenerationSystem,
                 _targetingSystem,
+                _movementSystem,
                 _eventBus);
             
             _entitiesManager.RegisterEntity(player);

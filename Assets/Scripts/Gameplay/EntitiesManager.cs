@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using Entities;
-using UnityEngine;
+using TacticalDroneCommander.Core.Events;
 
 namespace Gameplay
 {
@@ -19,7 +19,19 @@ namespace Gameplay
     public class EntitiesManager : IEntitiesManager
     {
         private readonly List<Entity> _entities = new();
-        
+        private readonly IEventBus _eventBus;
+
+        public EntitiesManager(IEventBus eventBus)
+        {
+            _eventBus = eventBus;
+            _eventBus.Subscribe<EntityDiedEvent>(OnEntityDied);
+        }
+
+        private void OnEntityDied(EntityDiedEvent evt)
+        {
+            UnregisterEntity(evt.Entity);
+        }
+
         public void RegisterEntity(Entity entity)
         {
             if (entity == null)
@@ -53,6 +65,7 @@ namespace Gameplay
         {
             return _entities.FirstOrDefault(e => e.GetId() == id);
         }
+
         public event Action OnEntitiesChanged;
     }
 }
